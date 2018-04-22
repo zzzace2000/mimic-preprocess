@@ -72,6 +72,10 @@ Here are the required steps to build the benchmark. It assumes that you already 
        python scripts/create_length_of_stay.py data/root/ data/length-of-stay/
        python scripts/create_phenotyping.py data/root/ data/phenotyping/
        python scripts/create_multitask.py data/root/ data/multitask/
+       
+8. I add my own datasets.
+
+       python scripts/my_create_in_hospital_mortality.py data/root/ data/my-mortality/
         
 ## Working with baseline models
 

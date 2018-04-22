@@ -280,10 +280,10 @@ class Discretizer():
         return (data, new_header)
 
     def print_statistics(self):
-        print "statistics of discretizer:"
-        print "\tconverted %d examples" % self._done_count
-        print "\taverage unused data = %.2f percent" % (100.0 * self._unused_data_sum / self._done_count)
-        print "\taverage empty  bins = %.2f percent" % (100.0 * self._empty_bins_sum / self._done_count)
+        print("statistics of discretizer:")
+        print("\tconverted %d examples" % self._done_count)
+        print("\taverage unused data = %.2f percent" % (100.0 * self._unused_data_sum / self._done_count))
+        print("\taverage empty  bins = %.2f percent" % (100.0 * self._empty_bins_sum / self._done_count))
 
 
 class Normalizer():

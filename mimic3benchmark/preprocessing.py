@@ -4,6 +4,7 @@ import numpy as np
 import re
 
 from pandas import DataFrame, Series
+import pandas as pd
 
 
 ###############################
@@ -35,13 +36,15 @@ def transform_ethnicity(ethnicity_series):
 
 def assemble_episodic_data(stays, diagnoses):
     data = { 'Icustay': stays.ICUSTAY_ID, 'Age': stays.AGE, 'Length of Stay': stays.LOS,
-                    'Mortality': stays.MORTALITY }
+             'Mortality': stays.MORTALITY, 'Intime': stays.INTIME, 'Outtime': stays.OUTTIME,
+             'Deathtime': stays.DEATHTIME }
     data.update(transform_gender(stays.GENDER))
     data.update(transform_ethnicity(stays.ETHNICITY))
     data['Height'] = np.nan
     data['Weight'] = np.nan
     data = DataFrame(data).set_index('Icustay')
-    data = data[['Ethnicity', 'Gender', 'Age', 'Height', 'Weight', 'Length of Stay', 'Mortality']]
+    data = data[['Ethnicity', 'Gender', 'Age', 'Height', 'Weight', 'Length of Stay', 'Mortality', 'Deathtime', 'Intime', 'Outtime']]
+    
     return data.merge(extract_diagnosis_labels(diagnoses), left_index=True, right_index=True)
 
 diagnosis_labels = [ '4019', '4280', '41401', '42731', '25000', '5849', '2724', '51881', '53081', '5990', '2720', '2859', '2449', '486', '2762', '2851', '496', 'V5861', '99592', '311', '0389', '5859', '5070', '40390', '3051', '412', 'V4581', '2761', '41071', '2875', '4240', 'V1582', 'V4582', 'V5867', '4241', '40391', '78552', '5119', '42789', '32723', '49390', '9971', '2767', '2760', '2749', '4168', '5180', '45829', '4589', '73300', '5845', '78039', '5856', '4271', '4254', '4111', 'V1251', '30000', '3572', '60000', '27800', '41400', '2768', '4439', '27651', 'V4501', '27652', '99811', '431', '28521', '2930', '7907', 'E8798', '5789', '79902', 'V4986', 'V103', '42832', 'E8788', '00845', '5715', '99591', '07054', '42833', '4275', '49121', 'V1046', '2948', '70703', '2809', '5712', '27801', '42732', '99812', '4139', '3004', '2639', '42822', '25060', 'V1254', '42823', '28529', 'E8782', '30500', '78791', '78551', 'E8889', '78820', '34590', '2800', '99859', 'V667', 'E8497', '79092', '5723', '3485', '5601', '25040', '570', '71590', '2869', '2763', '5770', 'V5865', '99662', '28860', '36201', '56210' ]
@@ -193,6 +196,56 @@ def clean_height(df):
     v.ix[idx] = np.round(v[idx] * 2.54)
     return v
 
+def clean_cell_count(df):
+    def clean(value):
+        try:
+            if value == 'NORMAL': # only red blood cell count. By internet around 5
+                return 5.
+            value = float(value)
+            return value
+        except ValueError: # Like 'UNABLE TO REPORT' '2-5', '>50', '>1000', '<0.1'. Since their units is hpf.
+            print('wierd value:', value, df.MIMIC_LABEL.iloc[0])
+            return np.nan
+    v = df.VALUE.astype(str)
+    v = v.apply(clean)
+    v = v.astype(float)
+    return v
+
+def clean_signals(df):
+    def clean(value):
+        # Handle 'LESS THAN 20', 'PREVIOUSLY REPORTED AS 590', 'GREATER THAN 10.0'
+        try:
+            if value.startswith('LESS') or value.startswith('GREATER') or value.startswith('PREVIOUSLY'):
+                return float(value.split(' ')[-1])
+            elif value.startswith('<') or value.startswith('>'):
+                return float(value[1:])
+            value = float(value)
+            return value
+        except ValueError: # Clean wierd thing like => potassium 20kcl / 40eq / no data etc
+            print('wierd value:', value, df.MIMIC_LABEL.iloc[0])
+            return np.nan
+
+    v = df.VALUE.astype(str)
+    v = v.apply(clean)
+    v = v.astype(float)
+    return v
+
+def clean_non_float(df):
+    def clean(value):
+        # Handle 'LESS THAN 20', 'PREVIOUSLY REPORTED AS 590', 'GREATER THAN 10.0'
+        try:
+            value = float(value)
+            return value
+        except ValueError: # Clean wierd thing like => potassium 20kcl / 40eq / no data etc
+            print('wierd value:', value, df.MIMIC_LABEL.iloc[0])
+            return np.nan
+
+    v = df.VALUE.astype(str)
+    v = v.apply(clean)
+    v = v.astype(float)
+    return v
+
+
 # ETCO2: haven't found yet
 # Urine output: ambiguous units (raw ccs, ccs/kg/hr, 24-hr, etc.)
 # Tidal volume: tried to substitute for ETCO2 but units are ambiguous
@@ -213,8 +266,30 @@ clean_fns = {
     'pH': clean_lab,
     'Temperature': clean_temperature,
     'Weight': clean_weight,
-    'Height': clean_height
+    'Height': clean_height,
+    'Red blood cell count': clean_cell_count,
+    'White blood cell count': clean_cell_count,
+    'Albumin': clean_signals,
+    'Platelets': clean_signals,
+    'Potassium': clean_signals,
+    'Chloride': clean_signals,
+    'Sodium': clean_signals,
+    'Bicarbonate': clean_signals,
+    'Cholesterol': clean_signals,
+    'Phosphate': clean_signals,
+    'Creatinine': clean_signals,
+    'Bilirubin': clean_signals,
+
+    'Blood urea nitrogen': clean_non_float,
+    'Urine output': clean_non_float,
+    'Glascow coma scale total': clean_non_float,
+    'Heart Rate': clean_non_float,
+    'Mean blood pressure': clean_non_float,
+    'Partial pressure of oxygen': clean_non_float,
+    'Respiratory rate': clean_non_float,
+    'Troponin-T': clean_non_float,
 }
+
 def clean_events(events):
     global cleaning_fns
     for var_name, clean_fn in clean_fns.items():
@@ -222,7 +297,7 @@ def clean_events(events):
         try:
             events.VALUE.ix[idx] = clean_fn(events.ix[idx])
         except Exception as e:
-            print("Exception in clean_events:", clean_fn.__name__, e)
+            print("\nException in clean_events:", clean_fn.__name__, e)
             print("number of rows:", np.sum(idx))
             print("values:", events.ix[idx])
             exit()

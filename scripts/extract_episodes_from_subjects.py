@@ -2,16 +2,16 @@ import argparse
 
 import os
 import sys
+import glob
 
 from mimic3benchmark.subject import read_stays, read_diagnoses, read_events, get_events_for_stay, add_hours_elpased_to_events
 from mimic3benchmark.subject import convert_events_to_timeseries, get_first_valid_from_timeseries
 from mimic3benchmark.preprocessing import read_itemid_to_variable_map, map_itemids_to_variables, read_variable_ranges, clean_events
 from mimic3benchmark.preprocessing import transform_gender, transform_ethnicity, assemble_episodic_data
 
-
 parser = argparse.ArgumentParser(description='Extract episodes from per-subject data.')
 parser.add_argument('subjects_root_path', type=str, help='Directory containing subject sub-directories.')
-parser.add_argument('--variable_map_file', type=str, default='resources/itemid_to_variable_map.csv',
+parser.add_argument('--variable_map_file', type=str, default='resources/my_itemid_to_variable_map.csv',
                     help='CSV containing ITEMID-to-VARIABLE map.')
 parser.add_argument('--reference_range_file', type=str, default='resources/variable_ranges.csv',
                     help='CSV containing reference ranges for VARIABLEs.')
@@ -28,6 +28,7 @@ for subject_dir in os.listdir(args.subjects_root_path):
         if not os.path.isdir(dn):
             raise Exception
     except:
+        print('not a directory!', dn)
         continue
     sys.stdout.write('Subject {}: '.format(subject_id))
     sys.stdout.flush()
@@ -53,11 +54,22 @@ for subject_dir in os.listdir(args.subjects_root_path):
     events = clean_events(events)
     if events.shape[0] == 0:
         sys.stdout.write('no valid events!\n')
+        for f in glob.glob(os.path.join(dn, 'episode*')):
+            os.remove(f)
+            print('remove file', f)
         continue
     timeseries = convert_events_to_timeseries(events, variables=variables)
     
     sys.stdout.write('extracting separate episodes...')
     sys.stdout.flush()
+
+    # Clean up old files!
+    episode_files = os.listdir(os.path.join(args.subjects_root_path, subject_dir))
+    for thefile in episode_files:
+        if thefile.startswith('episode'):
+            path = os.path.join(args.subjects_root_path, subject_dir, thefile)
+            # print('Removing file %s' % path)
+            os.remove(path)
 
     for i in range(stays.shape[0]):
         stay_id = stays.ICUSTAY_ID.iloc[i]
@@ -75,9 +87,11 @@ for subject_dir in os.listdir(args.subjects_root_path):
         episode = add_hours_elpased_to_events(episode, intime).set_index('HOURS').sort_index(axis=0)
         episodic_data.Weight.ix[stay_id] = get_first_valid_from_timeseries(episode, 'Weight')
         episodic_data.Height.ix[stay_id] = get_first_valid_from_timeseries(episode, 'Height')
-        episodic_data.ix[episodic_data.index==stay_id].to_csv(os.path.join(args.subjects_root_path, subject_dir, 'episode{}.csv'.format(i+1)), index_label='Icustay')
+        episodic_data.ix[episodic_data.index==stay_id].to_csv(
+            os.path.join(args.subjects_root_path, subject_dir, 'episode{}.csv'.format(i+1)), index_label='Icustay')
         columns = list(episode.columns)
         columns_sorted = sorted(columns, key=(lambda x: "" if x == "Hours" else x))
         episode = episode[columns_sorted]
-        episode.to_csv(os.path.join(args.subjects_root_path, subject_dir, 'episode{}_timeseries.csv'.format(i+1)), index_label='Hours')
+        episode.to_csv(os.path.join(args.subjects_root_path, subject_dir,
+                                    'episode{}_timeseries.csv'.format(i+1)), index_label='Hours')
     sys.stdout.write(' DONE!\n')

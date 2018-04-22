@@ -128,7 +128,8 @@ def break_up_diagnoses_by_subject(diagnoses, output_path, subjects=None, verbose
         sys.stdout.write('DONE!\n')
 
 def read_events_table_and_break_up_by_subject(mimic3_path, table, output_path, items_to_keep=None, subjects_to_keep=None, verbose=1):
-    obs_header = [ 'SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'VALUE', 'VALUEUOM' ]
+    obs_header = [ 'SUBJECT_ID', 'HADM_ID', 'ICUSTAY_ID', 'CHARTTIME', 'ITEMID', 'VALUE', 'VALUEUOM',
+                   'AMOUNT', 'AMOUNTUOM', 'RATE', 'RATEUOM']
     if items_to_keep is not None:
         items_to_keep = set([ str(s) for s in items_to_keep ])
     if subjects_to_keep is not None:

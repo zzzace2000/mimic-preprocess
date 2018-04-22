@@ -37,8 +37,8 @@ def get_events_for_stay(events, icustayid, intime=None, outtime=None):
     del events['ICUSTAY_ID']
     return events
 
-def add_hours_elpased_to_events(events, dt, remove_charttime=True):
-    events['HOURS'] = (events.CHARTTIME - dt).apply(lambda s: s / np.timedelta64(1, 's')) / 60./60
+def add_hours_elpased_to_events(events, intime, remove_charttime=True):
+    events['HOURS'] = (events.CHARTTIME - intime).apply(lambda s: s / np.timedelta64(1, 's')) / 60./60
     if remove_charttime:
     	del events['CHARTTIME']
     return events
