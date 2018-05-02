@@ -66,7 +66,7 @@ def process_partition(partition, eps=1e-6, n_hours=48):
                 rel_death_hours = tdelta.days * 24 + tdelta.seconds / 60 / 60
 
             keys = ['Icustay', 'Intime', 'Outtime', 'Deathtime',
-                    'Mortality', 'Ethnicity', 'Gender', 'Age', 'Height']
+                    'Mortality', 'Ethnicity', 'Gender', 'Age', 'Height', 'Weight']
             new_df = {k: label_df[k] for k in keys}
             new_df['Filename'] = output_ts_filename
             new_df['Real Death Hours'] = rel_death_hours
