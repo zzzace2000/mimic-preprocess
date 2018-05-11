@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import numpy as np
 import re
 
@@ -56,7 +54,7 @@ def extract_diagnosis_labels(diagnoses):
         if l not in labels:
             labels[l] = 0
     labels = labels[diagnosis_labels]
-    return labels.rename_axis(dict(zip(diagnosis_labels, [ 'Diagnosis ' + d for d in diagnosis_labels])), axis=1)
+    return labels.rename(dict(zip(diagnosis_labels, [ 'Diagnosis ' + d for d in diagnosis_labels])))
 
 def add_hcup_ccs_2015_groups(diagnoses, definitions):
     def_map = {}
@@ -81,7 +79,7 @@ def make_phenotype_label_matrix(phenotypes, stays=None):
 ###################################
 
 def read_itemid_to_variable_map(fn, variable_column='LEVEL2'):
-    var_map = DataFrame.from_csv(fn, index_col=None).fillna('').astype(str)
+    var_map = pd.read_csv(fn, index_col=None).fillna('').astype(str)
 
     var_map.COUNT = var_map.COUNT.astype(int)
 
@@ -89,7 +87,7 @@ def read_itemid_to_variable_map(fn, variable_column='LEVEL2'):
     var_map = var_map.ix[(var_map.STATUS == 'ready')]
     var_map.ITEMID = var_map.ITEMID.astype(int)
     var_map = var_map[[variable_column, 'ITEMID', 'MIMIC LABEL']].set_index('ITEMID')
-    return var_map.rename_axis({variable_column: 'VARIABLE', 'MIMIC LABEL': 'MIMIC_LABEL'}, axis=1)
+    return var_map.rename(columns={variable_column: 'VARIABLE', 'MIMIC LABEL': 'MIMIC_LABEL'})
 
 def map_itemids_to_variables(events, var_map):
     return events.merge(var_map, left_on='ITEMID', right_index=True)
@@ -100,7 +98,7 @@ def read_variable_ranges(fn, variable_column='LEVEL2'):
     to_rename[variable_column] = 'VARIABLE'
     var_ranges = DataFrame.from_csv(fn, index_col=None)
     var_ranges = var_ranges[columns]
-    var_ranges.rename_axis(to_rename, axis=1, inplace=True)
+    var_ranges.rename(columns=to_rename, inplace=True)
     var_ranges = var_ranges.drop_duplicates(subset='VARIABLE', keep='first')
     var_ranges.set_index('VARIABLE', inplace=True)
     return var_ranges.ix[var_ranges.notnull().all(axis=1)]

@@ -9,4 +9,8 @@
 
 #python scripts/extract_episodes_from_subjects.py data2/root/train/ && python scripts/extract_episodes_from_subjects.py data2/root/test/ && python scripts/my_create_in_hospital_mortality.py data2/root/ data2/my-mortality/
 
-python scripts/mingjie_create_in_hospital_mortality.py data2/root/ data2/mingjie-mortality/
+#python scripts/mingjie_create_in_hospital_mortality.py data2/root/ data2/mingjie-mortality/
+
+
+# Deal with drug alone
+python scripts/extract_episodes_from_subjects.py

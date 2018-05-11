@@ -10,10 +10,17 @@ from mimic3benchmark.preprocessing import read_itemid_to_variable_map, map_itemi
 from mimic3benchmark.preprocessing import transform_gender, transform_ethnicity, assemble_episodic_data
 
 parser = argparse.ArgumentParser(description='Extract episodes from per-subject data.')
-parser.add_argument('subjects_root_path', type=str, help='Directory containing subject sub-directories.')
-parser.add_argument('--variable_map_file', type=str, default='resources/my_itemid_to_variable_map.csv',
+parser.add_argument('--subjects_root_path', type=str,
+                    help='Directory containing subject sub-directories.',
+                    default='../data2/root/train/')
+parser.add_argument('--episode_dirname', type=str,
+                    help='Directory containing events of interests under subject directory',
+                    default='drug_level')
+parser.add_argument('--variable_map_file', type=str,
+                    default='../resources/itemid_to_variable_map_drug_level.csv',
                     help='CSV containing ITEMID-to-VARIABLE map.')
-parser.add_argument('--reference_range_file', type=str, default='resources/variable_ranges.csv',
+parser.add_argument('--reference_range_file', type=str,
+                    default='../resources/variable_ranges.csv',
                     help='CSV containing reference ranges for VARIABLEs.')
 parser.add_argument('--verbose', '-v', type=int, help='Level of verbosity in output.', default=1)
 args, _ = parser.parse_known_args()
@@ -36,14 +43,15 @@ for subject_dir in os.listdir(args.subjects_root_path):
     try:
         sys.stdout.write('reading...')
         sys.stdout.flush()
-        stays = read_stays(os.path.join(args.subjects_root_path, subject_dir))
-        diagnoses = read_diagnoses(os.path.join(args.subjects_root_path, subject_dir))
-        events = read_events(os.path.join(args.subjects_root_path, subject_dir))
+        stays = read_stays(dn)
+        diagnoses = read_diagnoses(dn)
+        events = read_events(dn)
     except:
         sys.stdout.write('error reading from disk!\n')
         continue
     else:
-        sys.stdout.write('got {0} stays, {1} diagnoses, {2} events...'.format(stays.shape[0], diagnoses.shape[0], events.shape[0]))
+        sys.stdout.write('got {0} stays, {1} diagnoses, {2} events...'.format(
+            stays.shape[0], diagnoses.shape[0], events.shape[0]))
         sys.stdout.flush()
 
     episodic_data = assemble_episodic_data(stays, diagnoses)
@@ -54,7 +62,7 @@ for subject_dir in os.listdir(args.subjects_root_path):
     events = clean_events(events)
     if events.shape[0] == 0:
         sys.stdout.write('no valid events!\n')
-        for f in glob.glob(os.path.join(dn, 'episode*')):
+        for f in glob.glob(os.path.join(dn, args.episode_dirname, 'episode*')):
             os.remove(f)
             print('remove file', f)
         continue
@@ -64,13 +72,19 @@ for subject_dir in os.listdir(args.subjects_root_path):
     sys.stdout.flush()
 
     # Clean up old files!
-    episode_files = os.listdir(os.path.join(args.subjects_root_path, subject_dir))
+    episode_dir = os.path.join(dn, args.episode_dirname)
+    try:
+        os.mkdir(episode_dir)
+    except FileExistsError:
+        pass
+
+    episode_files = os.listdir(episode_dir)
     for thefile in episode_files:
         if thefile.startswith('episode'):
-            path = os.path.join(args.subjects_root_path, subject_dir, thefile)
-            # print('Removing file %s' % path)
+            path = os.path.join(episode_dir, thefile)
             os.remove(path)
 
+    # Write episode and time series data to local
     for i in range(stays.shape[0]):
         stay_id = stays.ICUSTAY_ID.iloc[i]
         sys.stdout.write(' {}'.format(stay_id))
@@ -88,10 +102,10 @@ for subject_dir in os.listdir(args.subjects_root_path):
         episodic_data.Weight.ix[stay_id] = get_first_valid_from_timeseries(episode, 'Weight')
         episodic_data.Height.ix[stay_id] = get_first_valid_from_timeseries(episode, 'Height')
         episodic_data.ix[episodic_data.index==stay_id].to_csv(
-            os.path.join(args.subjects_root_path, subject_dir, 'episode{}.csv'.format(i+1)), index_label='Icustay')
+            os.path.join(episode_dir, 'episode{}.csv'.format(i+1)), index_label='Icustay')
         columns = list(episode.columns)
         columns_sorted = sorted(columns, key=(lambda x: "" if x == "Hours" else x))
         episode = episode[columns_sorted]
-        episode.to_csv(os.path.join(args.subjects_root_path, subject_dir,
+        episode.to_csv(os.path.join(episode_dir,
                                     'episode{}_timeseries.csv'.format(i+1)), index_label='Hours')
     sys.stdout.write(' DONE!\n')
