@@ -1,3 +1,14 @@
+MIMIC-III preprocessing for Dynamic Measurement Scheduling for Event Forecasting using Deep RL (ICML 2019)
+=========================
+
+## 3 Steps to preprocess the data:
+1. Run this repo by following the instructions below first (it's cloned around Jan. 2018). But when creating the dataset use mingjie_create_in_hospital_mortality.py to create.
+2. Follow the official MIMIC repo to run the concept comorbidity with file elixhauser_ahrq (https://github.com/MIT-LCP/mimic-code/tree/master/concepts). You need to setup sql to run this part. After that export the table view to a csv file as elixhauser_ahrq.csv
+3. Run the 2 notebooks in the notebooks/. Just change the file path pointing toward your generated files and folder.
+
+Then you can run the code part in https://github.com/zzzace2000/autodiagnosis.
+
+
 MIMIC-III Benchmarks
 =========================
 
@@ -75,7 +86,7 @@ Here are the required steps to build the benchmark. It assumes that you already 
        
 8. I add my own datasets.
 
-       python scripts/my_create_in_hospital_mortality.py data/root/ data/my-mortality/
+       python scripts/mingjie_create_in_hospital_mortality.py data/root/ data/my-mortality/
         
 ## Working with baseline models
 
